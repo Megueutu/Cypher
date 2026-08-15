@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-
 @dataclass
-class Entropy():
+class Entropy:
+    bits: float
     top_attempts: int
     leet_guesses: int
-    bits:         float

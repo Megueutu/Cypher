@@ -1,13 +1,11 @@
 from dataclasses import dataclass
 
-from src.domain.dataset import Dataset
-
 @dataclass
-class ExecutionMeasure():
+class ExecutionMeasure:
     success:  bool
     elapsed:  float
     function: str
-    accessed: list[Dataset]
+    accessed: list[str]
     
     def out(self):
         return {

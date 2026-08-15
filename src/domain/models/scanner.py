@@ -1,15 +1,12 @@
-from typing import Optional, TypedDict
-
-from src.domain.dataset import Dataset
-from src.domain.scanner import ScanType
+from typing import TypedDict
 
 class ScannerFinds(TypedDict):
     word:      str
     attempts:  int
-    dataset:   Dataset
-    scan_type: ScanType
+    dataset:   str
+    scan_type: str
 
 class ScannerResult(TypedDict):
-    matches:  Optional[list[ScannerFinds]]
-    score:    Optional[float]
+    matches:  list[ScannerFinds]
+    score:    float
     attempts: int

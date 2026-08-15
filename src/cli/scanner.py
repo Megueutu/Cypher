@@ -4,7 +4,7 @@ from pathlib import Path
 
 from data.registry import resolve_path
 from src.analyzer.statistics import measure
-from src.analyzer.matches    import scan_matches
+from src.analyzer.matches import scan_matches
 from src.domain.dataset import Category, Dataset
 from src.domain.scanner import ScanType
 

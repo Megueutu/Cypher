@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum        import Enum
+from enum import Enum
 
 class ScanType(Enum):
     COMPLETE = "complete"

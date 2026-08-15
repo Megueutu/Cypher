@@ -1,6 +1,6 @@
 import unicodedata
 from difflib import SequenceMatcher, Match
-from typing  import Callable, Optional
+from typing import Callable, Optional, Union
 
 from src.analyzer.translator import translate_password, translate_candidates
 from src.domain.scanner import ScanType
@@ -10,10 +10,19 @@ from src.domain.models.scanner import ScannerFinds, ScannerResult
 def _normalize(word: str) -> str:
     return unicodedata.normalize("NFKD", word.lower().strip()).encode("ASCII", "ignore").decode("ASCII")
 
-def scan(password: str, base: list, dataset: Dataset,
-    scan_type: ScanType | list[ScanType] = ScanType.COMPLETE, prioritize: Optional[ScanType | set[ScanType]] = None) -> ScannerResult:
+def scan(
+        password: str, 
+        base: list[str], 
+        dataset: Dataset,
+        scan_type: Union[ScanType, list[ScanType]] = ScanType.COMPLETE,
+        prioritize: Optional[Union[ScanType, set[ScanType]]] = None
+    ) -> ScannerResult:
     
-    if prioritize is ScanType.COMPLETE: raise TypeError("ScanType prioritizer cannot be COMPLETE")
+    if not password:
+        raise ValueError("password cannot be empty")
+    
+    if prioritize is ScanType.COMPLETE:
+        raise TypeError("ScanType prioritizer cannot be COMPLETE")
     
     attempts: int = 0
     words: list[ScannerFinds] = list()
@@ -24,8 +33,8 @@ def scan(password: str, base: list, dataset: Dataset,
     nor_password: str = _normalize(password)
 
     result: ScannerResult = {
-        "matches"  : None,
-        "score"    : None,
+        "matches"  : [],
+        "score"    : 0,
         "attempts" : 0,
     }
     
@@ -148,6 +157,6 @@ def scan(password: str, base: list, dataset: Dataset,
         for fun in defs:
             if fun(word, nor_word): break
 
-    result["score"], result["matches"] = acc, words if words is not set() else None
+    result["score"], result["matches"] = acc, words
 
     return result

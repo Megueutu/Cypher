@@ -1,13 +1,13 @@
 from pathlib import Path
-from typing  import Optional
+from typing import Optional, Union
 
 from data.registry import get_datasets, resolve_path
-from src.domain.scanner   import ScanType
-from src.domain.dataset   import Category, Dataset
+from src.domain.scanner import ScanType
+from src.domain.dataset import Category, Dataset
 from src.analyzer.scanner import scan
 from src.domain.models.matches import ScanMatches, FormatScan, Matches
 
-_CACHE = {}
+_CACHE: dict[Path, list[str]] = {}
 
 def _severity_analyzer(severity: float) -> str:
     if   severity <=  0: return "No risk detected"
@@ -29,44 +29,48 @@ def load_base(path: Path) -> list[str]:
             
     return _CACHE[path]
 
-def find_exactly(password: str, dataset: Dataset, scan_type: ScanType | list[ScanType], prioritize: Optional[ScanType | set[ScanType]] = None) -> tuple[int, dict]:
+def find_exactly(
+        password: str,
+        dataset: Dataset,
+        scan_type: Union[ScanType, list[ScanType]],
+        prioritize: Optional[Union[ScanType, set[ScanType]]] = None,
+    ) -> tuple[int, Matches]:
+    
     matches: Matches = {
         "matches"  : [],
         "severity" : [],
     }
-    
-    try:
-        base = load_base(path=resolve_path(dataset))
-    
-    except FileNotFoundError:
-        return -1
-    
+    base = load_base(resolve_path(dataset))
+
     scann = scan(password=password, base=base, scan_type=scan_type, dataset=dataset, prioritize=prioritize)
 
-    matches["matches"].append(scann["matches"])
+    matches["matches"] = scann["matches"]
     matches["severity"].append(scann["score"])
 
-    return len(scann["matches"]) if not scann["matches"] is None else 0, matches
+    return len(scann["matches"]), matches
 
-def scan_matches(password: str,
-    dataset: Optional[Dataset | list[Dataset]] = None, path: Optional[Path | str] = None,
-    scan_category: Optional[Category] = None, scan_type: ScanType | list[ScanType] = ScanType.COMPLETE,
-    prioritize: Optional[ScanType | set[ScanType]] = None, statistic: bool = False) -> ScanMatches | tuple[ScanMatches, list[Dataset]]:
+def scan_matches(
+        password: str,
+        dataset: Optional[Union[Dataset, list[Dataset]]] = None,
+        path: Optional[Union[Path, str]] = None,
+        scan_category: Optional[Category] = None, 
+        scan_type: Union[ScanType, list[ScanType]] = ScanType.COMPLETE,
+        prioritize: Optional[Union[ScanType, set[ScanType]]] = None,
+        statistic: bool = False
+    ) -> Union[ScanMatches, tuple[ScanMatches, list[Dataset]]]:
     
-    if password is None: raise ValueError("No password were given as a parameter")
+    if not password:
+        raise ValueError("password cannot be empty")
 
     finds:    list[FormatScan] = list()
     severity: list[float] = list()
     
-    if not path is None and isinstance(path, (str, Path)):
-        raise TypeError("Path need to be a Path or str")
-        
-    if path and type(path) is str:
-        Path.parser(path)
+    if path is not None:
+        raise NotImplementedError("custom dataset paths are not supported yet")
     
     datasets: list[Dataset] 
     if dataset is None: datasets = get_datasets(scan_category)
-    elif type(dataset) == type(list()): datasets == dataset
+    elif isinstance(dataset, list): datasets = dataset
     else: datasets = [dataset]
     
     if not datasets:
@@ -75,18 +79,17 @@ def scan_matches(password: str,
         raise ValueError(f"No datasets were given as a parameter")
 
     for dataset in datasets:
-        scan:  tuple[int, dict] = find_exactly(password=password, dataset=dataset, scan_type=scan_type, prioritize=prioritize)
+        scan_result = find_exactly(password=password, dataset=dataset, scan_type=scan_type, prioritize=prioritize)
         format_scan: FormatScan = {
-            "words_found" : scan[0],
-            "matches"     : scan[1]["matches"],
-            "severity"    : {round(sum(scan[1]["severity"]), 2)}
+            "words_found" : scan_result[0],
+            "matches"     : scan_result[1]["matches"],
+            "severity"    : round(sum(scan_result[1]["severity"]), 2),
         }
         
         if format_scan["words_found"] > 0:
-            severity.append(scan[1]["severity"])
+            severity.extend(scan_result[1]["severity"])
             finds.append(format_scan)
 
-    severity: list[float] = [i for sub in severity for i in sub]
     pctg_severity:  float = round(sum(severity) / max(len(severity), 1), 2)
 
     answer: ScanMatches = {
